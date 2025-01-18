@@ -7,5 +7,6 @@ curl -s "$URL" > temp.txt
 for item in "${pokemons[@]}"; do
 	pokemon_url=$(jq --arg name "$item" '.results[] | select(.name == $name)' temp.txt | jq -r '.url')
 	curl -s "$pokemon_url" > "./pokemons/${item}.json"
+	sleep(2)
 done
 
