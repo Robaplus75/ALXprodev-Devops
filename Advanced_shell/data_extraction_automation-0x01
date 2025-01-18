@@ -6,11 +6,11 @@ URL=$(awk -F'"' '{ print $8 }' "$JSON_FILE")
 
 CHARACTER=$(curl -s $URL)
 
-NAME="$(echo "$CHARACTER" | jq -r '.name')"
-TYPE="$(echo "$CHARACTER" | jq -r '.type')"
-WEIGHT="$(echo "$CHARACTER" | jq -r '.weight')"
-HEIGHT="$(echo "$CHARACTER" | jq -r '.height')"
+name="$(echo "$CHARACTER" | jq -r '.name')"
+type="$(echo "$CHARACTER" | jq -r '.type')"
+formatted_weight="$(echo "$CHARACTER" | jq -r '.weight')"
+formatted_height="$(echo "$CHARACTER" | jq -r '.height')"
 
+sed 's/name/name/g' data.json
 
-
-echo "$NAME is of type $TYPE, weighs $WEIGHT, and is $HEIGHT m tall."
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
