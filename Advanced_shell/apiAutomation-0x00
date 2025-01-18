@@ -1,5 +1,6 @@
 #!/bin/bash
 
+CHARACTER="charmeleon"
 URL="https://pokeapi.co/api/v2/pokemon/"
 DATA_FILE="data.json"
 ERROR_FILE="errors.txt"
@@ -11,6 +12,6 @@ trap 'echo "An error occurred. Exiting..."; exit 1' ERR
 
 curl -s "$URL" -o "temp.txt" || error_handler "Curl Failed to do its thing"
 
-grep -o '"name":"pikachu","url":"[^"]*"' "temp.txt" > "$DATA_FILE"
+grep -o "\"name\":\"$CHARACTER\",\"url\":\"[^\"]*\"" "temp.txt" > "$DATA_FILE"
 cat "$DATA_FILE"
 rm temp.txt

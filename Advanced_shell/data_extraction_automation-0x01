@@ -1,0 +1,16 @@
+#!/bin/bash
+
+JSON_FILE="data.json"
+
+URL=$(awk -F'"' '{ print $8 }' "$JSON_FILE")
+
+CHARACTER=$(curl -s $URL)
+
+NAME="$(echo "$CHARACTER" | jq -r '.name')"
+TYPE="$(echo "$CHARACTER" | jq -r '.type')"
+WEIGHT="$(echo "$CHARACTER" | jq -r '.weight')"
+HEIGHT="$(echo "$CHARACTER" | jq -r '.height')"
+
+
+
+echo "$NAME is of type $TYPE, weighs $WEIGHT, and is $HEIGHT m tall."
