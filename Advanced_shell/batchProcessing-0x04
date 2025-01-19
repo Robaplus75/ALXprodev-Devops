@@ -1,0 +1,124 @@
+#!/bin/bash
+
+API_BASE_URL="https://pokeapi.co/api/v2/pokemon"
+MAX_PARALLEL=3  # Maximum number of parallel processes
+ERROR_LOG="parallel_errors.txt"
+DATA_DIR="pokemon_data"
+TEMP_DIR="temp_processes"
+
+POKEMON_LIST=(
+    "bulbasaur"
+    "ivysaur"
+    "venusaur"
+    "charmander"
+    "charmeleon"
+)
+
+mkdir -p "$DATA_DIR" "$TEMP_DIR"
+
+> "$ERROR_LOG"
+
+to_lowercase() {
+    echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+fetch_pokemon() {
+    local pokemon_name="$1"
+    local output_file="$DATA_DIR/${pokemon_name}.json"
+    local pid_file="$TEMP_DIR/${pokemon_name}.pid"
+    local max_retries=3
+    local retry_count=0
+    local wait_time=5
+
+    # Store the PID of this background process
+    echo $$ > "$pid_file"
+
+    while [ $retry_count -lt $max_retries ]; do
+        HTTP_STATUS=$(curl -s -w "%{http_code}" -o "$output_file" "${API_BASE_URL}/${pokemon_name}")
+        
+        case $HTTP_STATUS in
+            200)
+                if jq empty "$output_file" 2>/dev/null; then
+                    echo "Success: ${pokemon_name}"
+                    rm -f "$pid_file"
+                    exit 0
+                fi
+                ;;
+            404)
+                echo "$(date '+%Y-%m-%d %H:%M:%S') - Pokemon ${pokemon_name} not found" >> "$ERROR_LOG"
+                rm -f "$pid_file" "$output_file"
+                exit 1
+                ;;
+            *)
+                if [ $retry_count -lt $((max_retries-1)) ]; then
+                    sleep $wait_time
+                    wait_time=$((wait_time * 2))
+                    retry_count=$((retry_count + 1))
+                    continue
+                fi
+                ;;
+        esac
+        
+        retry_count=$((retry_count + 1))
+    done
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Failed to fetch ${pokemon_name} after ${max_retries} attempts" >> "$ERROR_LOG"
+    rm -f "$pid_file" "$output_file"
+    exit 1
+}
+
+count_active_processes() {
+    find "$TEMP_DIR" -name "*.pid" | wc -l
+}
+
+cleanup() {
+    echo "Cleaning up background processes..."
+    for pid_file in "$TEMP_DIR"/*.pid; do
+        if [ -f "$pid_file" ]; then
+            pid=$(cat "$pid_file")
+            kill "$pid" 2>/dev/null
+            rm -f "$pid_file"
+        fi
+    done
+    rm -rf "$TEMP_DIR"
+    exit 1
+}
+
+trap cleanup SIGINT SIGTERM
+
+
+for pokemon in "${POKEMON_LIST[@]}"; do
+    pokemon_lower=$(to_lowercase "$pokemon")
+    
+        while [ $(count_active_processes) -ge $MAX_PARALLEL ]; do
+        sleep 1
+    done
+    
+    fetch_pokemon "$pokemon_lower" &
+    
+    sleep 0.5
+done
+
+echo "Waiting for all processes to complete..."
+while [ $(count_active_processes) -gt 0 ]; do
+    sleep 1
+done
+
+rm -rf "$TEMP_DIR"
+
+echo -e "\nParallel processing completed!"
+if [ -s "$ERROR_LOG" ]; then
+    echo "Some errors occurred. Check $ERROR_LOG for details."
+    echo "Last 3 errors:"
+    tail -n 3 "$ERROR_LOG"
+else
+    echo "All Pokemon data retrieved successfully!"
+fi
+
+echo -e "\nSuccessfully downloaded files:"
+ls -l "$DATA_DIR"
+
+if [ -f "$TEMP_DIR/timing.txt" ]; then
+    echo -e "\nTiming Statistics:"
+    cat "$TEMP_DIR/timing.txt"
+fi
