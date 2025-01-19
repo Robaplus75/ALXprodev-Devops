@@ -12,6 +12,7 @@ POKEMON_LIST=(
     "venusaur"
     "charmander"
     "charmeleon"
+    "jobs"
 )
 
 mkdir -p "$DATA_DIR" "$TEMP_DIR"
